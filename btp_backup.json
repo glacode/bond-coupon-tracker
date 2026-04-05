@@ -1,0 +1,64 @@
+{
+  "purchases": [
+    {
+      "id": 1001,
+      "desc": "BTP 4.3 OCT 54",
+      "rate": 4.3,
+      "amount": 10000,
+      "buyDate": "2024-01-15",
+      "endDate": "2054-10-01"
+    },
+    {
+      "id": 1002,
+      "desc": "BTP 3.85 SEP 49",
+      "rate": 3.85,
+      "amount": 15000,
+      "buyDate": "2023-11-20",
+      "endDate": "2049-09-01"
+    },
+    {
+      "id": 1003,
+      "desc": "BTP 5.75 FEB 33",
+      "rate": 5.75,
+      "amount": 8000,
+      "buyDate": "2024-02-05",
+      "endDate": "2033-02-01"
+    },
+    {
+      "id": 1004,
+      "desc": "BTP 4.65 OCT 55",
+      "rate": 4.65,
+      "amount": 12000,
+      "buyDate": "2024-03-10",
+      "endDate": "2055-10-01"
+    },
+    {
+      "id": 1005,
+      "desc": "BTP 4.5 OCT 53",
+      "rate": 4.5,
+      "amount": 10000,
+      "buyDate": "2023-12-01",
+      "endDate": "2053-10-01"
+    }
+  ],
+  "coupons": [
+    {
+      "id": 2001,
+      "purchaseId": 1001,
+      "date": "2024-04-01",
+      "amount": 188.13
+    },
+    {
+      "id": 2002,
+      "purchaseId": 1002,
+      "date": "2024-03-01",
+      "amount": 252.66
+    },
+    {
+      "id": 2003,
+      "purchaseId": 1005,
+      "date": "2024-04-01",
+      "amount": 196.88
+    }
+  ]
+}

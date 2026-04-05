@@ -22,4 +22,3 @@ build/
 .env
 
 start_repo.sh
-btp_backup.json
