@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTP Coupon Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .missing { background-color: #fee2e2; color: #991b1b; }
+        .confirmed { background-color: #dcfce7; color: #166534; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen pb-20">
+
+    <nav class="bg-blue-700 text-white p-4 shadow-lg mb-8">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-tight">BTP Coupon Tracker</h1>
+            <div class="space-x-2">
+                <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">Export JSON</button>
+                <input type="file" id="importFile" class="hidden" onchange="importData(event)">
+                <button onclick="document.getElementById('importFile').click()" class="bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">Import JSON</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 space-y-8">
+        
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">1. Investment Portfolio</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                <input id="p_desc" type="text" placeholder="Description" class="border p-2 rounded w-full">
+                <input id="p_rate" type="number" step="0.01" placeholder="Coupon %" class="border p-2 rounded w-full">
+                <input id="p_amount" type="number" placeholder="Nominal Amount" class="border p-2 rounded w-full">
+                <input id="p_buy_date" type="date" title="Purchase Date" class="border p-2 rounded w-full">
+                <input id="p_end_date" type="date" title="Maturity Date" class="border p-2 rounded w-full">
+                <button onclick="addPurchase()" class="bg-green-600 text-white p-2 rounded hover:bg-green-700 font-bold uppercase text-xs">Add Position</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left border">
+                    <thead class="bg-gray-100 uppercase text-xs">
+                        <tr>
+                            <th class="p-3 border">Description</th>
+                            <th class="p-3 border">Coupon %</th>
+                            <th class="p-3 border">Nominal</th>
+                            <th class="p-3 border">Est. Semi-Coupon (Net)</th>
+                            <th class="p-3 border">Dates</th>
+                            <th class="p-3 border">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchaseTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">2. Confirmed Coupon Payments</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 max-w-2xl">
+                <select id="c_id" class="border p-2 rounded"></select>
+                <input id="c_date" type="date" class="border p-2 rounded">
+                <input id="c_amount" type="number" step="0.01" placeholder="Amount Received" class="border p-2 rounded">
+                <button onclick="addCoupon()" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-bold uppercase text-xs">Register Payment</button>
+            </div>
+            <div class="overflow-x-auto max-h-60">
+                <table class="w-full text-sm text-left border">
+                    <thead class="bg-gray-100 uppercase text-xs">
+                        <tr>
+                            <th class="p-3 border">BTP</th>
+                            <th class="p-3 border">Date Received</th>
+                            <th class="p-3 border">Amount</th>
+                            <th class="p-3 border">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="confirmedTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">3. Reconciliation (Missing Coupons)</h2>
+            <div id="reconciliationArea" class="space-y-2 text-sm"></div>
+        </section>
+
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">4. Open Positions Filter</h2>
+            <div class="flex items-center space-x-4 mb-4">
+                <label class="text-sm font-medium">Check status at date:</label>
+                <input id="filter_date" type="date" onchange="filterPositions()" class="border p-2 rounded shadow-sm">
+            </div>
+            <div id="filterResult" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+    </div>
+
+    <script>
+        let db = { purchases: [], coupons: [] };
+
+        // INITIALIZATION
+        window.onload = () => {
+            const saved = localStorage.getItem('btp_tracker_db');
+            if (saved) db = JSON.parse(saved);
+            renderAll();
+        };
+
+        function saveData() {
+            localStorage.setItem('btp_tracker_db', JSON.stringify(db));
+            renderAll();
+        }
+
+        // LOGIC: ADD PURCHASE
+        function addPurchase() {
+            const p = {
+                id: Date.now(),
+                desc: document.getElementById('p_desc').value,
+                rate: parseFloat(document.getElementById('p_rate').value),
+                amount: parseFloat(document.getElementById('p_amount').value),
+                buyDate: document.getElementById('p_buy_date').value,
+                endDate: document.getElementById('p_end_date').value
+            };
+            if (!p.desc || isNaN(p.rate)) return alert("Check inputs");
+            db.purchases.push(p);
+            saveData();
+        }
+
+        // LOGIC: ADD COUPON
+        function addCoupon() {
+            const c = {
+                id: Date.now(),
+                purchaseId: parseInt(document.getElementById('c_id').value),
+                date: document.getElementById('c_date').value,
+                amount: parseFloat(document.getElementById('c_amount').value)
+            };
+            if (!c.purchaseId || !c.date) return alert("Select BTP and Date");
+            db.coupons.push(c);
+            saveData();
+        }
+
+        function deleteItem(type, id) {
+            db[type] = db[type].filter(item => item.id !== id);
+            saveData();
+        }
+
+        // RENDER FUNCTIONS
+        function renderAll() {
+            renderPurchases();
+            renderConfirmed();
+            renderReconciliation();
+            updateDropdown();
+        }
+
+        function renderPurchases() {
+            const tbody = document.getElementById('purchaseTable');
+            tbody.innerHTML = db.purchases.map(p => {
+                const netCoupon = (p.amount * (p.rate / 100) * 0.875 / 2).toFixed(2);
+                return `<tr>
+                    <td class="p-3 border font-bold">${p.desc}</td>
+                    <td class="p-3 border">${p.rate}%</td>
+                    <td class="p-3 border">€${p.amount.toLocaleString()}</td>
+                    <td class="p-3 border text-blue-700 font-semibold">€${netCoupon}</td>
+                    <td class="p-3 border text-xs">In: ${p.buyDate}<br>Out: ${p.endDate}</td>
+                    <td class="p-3 border"><button onclick="deleteItem('purchases', ${p.id})" class="text-red-500 underline">Delete</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderConfirmed() {
+            const tbody = document.getElementById('confirmedTable');
+            tbody.innerHTML = db.coupons.map(c => {
+                const btp = db.purchases.find(p => p.id === c.purchaseId);
+                return `<tr>
+                    <td class="p-3 border">${btp ? btp.desc : 'Unknown'}</td>
+                    <td class="p-3 border">${c.date}</td>
+                    <td class="p-3 border">€${c.amount.toFixed(2)}</td>
+                    <td class="p-3 border"><button onclick="deleteItem('coupons', ${c.id})" class="text-red-500 underline">Delete</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateDropdown() {
+            const select = document.getElementById('c_id');
+            select.innerHTML = '<option value="">Select BTP...</option>' + 
+                db.purchases.map(p => `<option value="${p.id}">${p.desc}</option>`).join('');
+        }
+
+        // LOGIC: RECONCILIATION (Find Missing)
+        function renderReconciliation() {
+            const area = document.getElementById('reconciliationArea');
+            area.innerHTML = '';
+            const today = new Date();
+
+            db.purchases.forEach(p => {
+                const start = new Date(p.buyDate);
+                const end = new Date(p.endDate);
+                const stopDate = today < end ? today : end;
+                
+                // Simple logic: coupons every 6 months from maturity date going backwards
+                let couponDate = new Date(end);
+                while (couponDate > start) {
+                    if (couponDate <= stopDate) {
+                        const dateStr = couponDate.toISOString().split('T')[0];
+                        const monthYear = dateStr.substring(0, 7); // "YYYY-MM"
+                        
+                        // Check if we have a confirmed payment in that specific month/year
+                        const isPaid = db.coupons.some(c => c.purchaseId === p.id && c.date.startsWith(monthYear));
+                        
+                        const div = document.createElement('div');
+                        div.className = `p-2 rounded border flex justify-between ${isPaid ? 'confirmed' : 'missing'}`;
+                        div.innerHTML = `<span><strong>${p.desc}</strong> - Expected: ${dateStr}</span> 
+                                         <span>${isPaid ? '✓ PAID' : '⚠ MISSING'}</span>`;
+                        area.appendChild(div);
+                    }
+                    couponDate.setMonth(couponDate.getMonth() - 6);
+                }
+            });
+        }
+
+        // LOGIC: FILTER POSITIONS BY DATE
+        function filterPositions() {
+            const targetStr = document.getElementById('filter_date').value;
+            if (!targetStr) return;
+            const target = new Date(targetStr);
+            const container = document.getElementById('filterResult');
+            
+            const active = db.purchases.filter(p => {
+                const buy = new Date(p.buyDate);
+                const end = new Date(p.endDate);
+                return target >= buy && target <= end;
+            });
+
+            container.innerHTML = active.length ? active.map(p => `
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div class="font-bold text-blue-800">${p.desc}</div>
+                    <div class="text-xs text-gray-600">Nominal: €${p.amount.toLocaleString()}</div>
+                </div>
+            `).join('') : '<p class="text-gray-500">No open positions at this date.</p>';
+        }
+
+        // PERSISTENCE TOOLS
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "btp_backup.json");
+            dlAnchorElem.click();
+        }
+
+        function importData(event) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                db = JSON.parse(e.target.result);
+                saveData();
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# --- OS Metadata ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE / Editor Settings ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Backup and Local Data ---
+# If you ever save local JSON exports in the folder
+*.json_backup
+*.log
+
+# --- Future-Proofing ---
+# In case you later decide to use npm for linting or minifying
+node_modules/
+dist/
+build/
+.env
+
+start_repo.sh
+btp_backup.json
