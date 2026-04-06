@@ -102,7 +102,10 @@
         // INITIALIZATION
         window.onload = () => {
             const saved = localStorage.getItem('btp_tracker_db');
-            if (saved) db = JSON.parse(saved);
+            if (saved) {
+                db = JSON.parse(saved);
+                db.purchases.sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+            }
             renderAll();
         };
 
