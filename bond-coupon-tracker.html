@@ -92,6 +92,7 @@
 
     <script>
         let db = { purchases: [], coupons: [] };
+        let editingId = null;
 
         // INITIALIZATION
         window.onload = () => {
@@ -106,10 +107,10 @@
             renderAll();
         }
 
-        // LOGIC: ADD PURCHASE
+        // LOGIC: ADD/UPDATE PURCHASE
         function addPurchase() {
             const p = {
-                id: Date.now(),
+                id: editingId ? editingId : Date.now(),
                 desc: document.getElementById('p_desc').value,
                 rate: parseFloat(document.getElementById('p_rate').value),
                 amount: parseFloat(document.getElementById('p_amount').value),
@@ -117,8 +118,35 @@
                 endDate: document.getElementById('p_end_date').value
             };
             if (!p.desc || isNaN(p.rate)) return alert("Check inputs");
-            db.purchases.push(p);
+            
+            if (editingId) {
+                const index = db.purchases.findIndex(item => item.id === editingId);
+                db.purchases[index] = p;
+                editingId = null;
+                document.querySelector('button[onclick="addPurchase()"]').textContent = "Add Position";
+            } else {
+                db.purchases.push(p);
+            }
+            
+            // Clear inputs
+            document.getElementById('p_desc').value = '';
+            document.getElementById('p_rate').value = '';
+            document.getElementById('p_amount').value = '';
+            document.getElementById('p_buy_date').value = '';
+            document.getElementById('p_end_date').value = '';
+
             saveData();
+        }
+
+        function editItem(id) {
+            const p = db.purchases.find(item => item.id === id);
+            document.getElementById('p_desc').value = p.desc;
+            document.getElementById('p_rate').value = p.rate;
+            document.getElementById('p_amount').value = p.amount;
+            document.getElementById('p_buy_date').value = p.buyDate;
+            document.getElementById('p_end_date').value = p.endDate;
+            editingId = id;
+            document.querySelector('button[onclick="addPurchase()"]').textContent = "Update Position";
         }
 
         // LOGIC: ADD COUPON
@@ -157,7 +185,10 @@
                     <td class="p-3 border">€${p.amount.toLocaleString()}</td>
                     <td class="p-3 border text-blue-700 font-semibold">€${netCoupon}</td>
                     <td class="p-3 border text-xs">In: ${p.buyDate}<br>Out: ${p.endDate}</td>
-                    <td class="p-3 border"><button onclick="deleteItem('purchases', ${p.id})" class="text-red-500 underline">Delete</button></td>
+                    <td class="p-3 border">
+                        <button onclick="editItem(${p.id})" class="text-blue-500 underline mr-2">Edit</button>
+                        <button onclick="deleteItem('purchases', ${p.id})" class="text-red-500 underline">Delete</button>
+                    </td>
                 </tr>`;
             }).join('');
         }
