@@ -101,6 +101,7 @@
         };
 
         function saveData() {
+            db.purchases.sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
             localStorage.setItem('btp_tracker_db', JSON.stringify(db));
             renderAll();
         }
