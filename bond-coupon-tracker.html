@@ -21,6 +21,11 @@
                 <button onclick="document.getElementById('importFile').click()" class="bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">Import JSON</button>
             </div>
         </div>
+        <div id="exportNotice" class="container mx-auto px-4 hidden">
+            <p id="noticeText" class="text-white text-sm font-semibold bg-blue-900 border border-blue-500 px-4 py-2 rounded mt-2 inline-block shadow-lg">
+                <!-- Message injected by JS -->
+            </p>
+        </div>
     </nav>
 
     <div class="container mx-auto px-4 space-y-8">
@@ -266,12 +271,41 @@
         }
 
         // PERSISTENCE TOOLS
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", "btp_backup.json");
-            dlAnchorElem.click();
+        async function exportData() {
+            const dataStr = JSON.stringify(db);
+            
+            // Check if the modern File System Access API is available
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: 'btp_backup.json',
+                        types: [{
+                            description: 'JSON File',
+                            accept: { 'application/json': ['.json'] },
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(dataStr);
+                    await writable.close();
+                } catch (err) {
+                    console.error("Export cancelled or failed:", err);
+                }
+            } else {
+                // Fallback for older browsers
+                const notice = document.getElementById('exportNotice');
+                const text = document.getElementById('noticeText');
+                text.textContent = "Your browser does not support custom save locations. File downloaded to your default Downloads folder.";
+                notice.classList.remove('hidden');
+                setTimeout(() => notice.classList.add('hidden'), 10000);
+
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const dlAnchorElem = document.createElement('a');
+                dlAnchorElem.setAttribute("href", url);
+                dlAnchorElem.setAttribute("download", "btp_backup.json");
+                dlAnchorElem.click();
+                URL.revokeObjectURL(url);
+            }
         }
 
         function importData(event) {
